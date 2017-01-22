@@ -12,9 +12,8 @@ class Album(Base):
     title = Column(String(45), unique=True, nullable=False)
     created_at = Column(DATETIME)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user = relationship("User")
-    photo = relationship("Photo", backref="album")
-    album_tag = relationship("Album_tag", backref="album")
+    photo = relationship("Photo", backref=backref('album', order_by=id))
+    album_tag = relationship("Album_tag", backref=backref('album'))
 
     def __init__(self, title=None, created_at=None, user_uid=None):
         self.title = title

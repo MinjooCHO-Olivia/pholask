@@ -12,8 +12,7 @@ class Photo(Base):
     content = Column(String(1500))
     created_at = Column(DATETIME)
     album_id = Column(Integer, ForeignKey('album.id'), nullable=False)
-    album = relationship("Photo")
-    photo_tag = relationship("Photo_tag", backref="photo")
+    photo_tag = relationship("Photo_tag", backref=backref('photo'))
 
     def __init__(self, image=None, content=None, created_at=None):
         self.image = image
