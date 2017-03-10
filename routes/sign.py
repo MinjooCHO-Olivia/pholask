@@ -1,13 +1,13 @@
-import base64
 from datetime import datetime
-import wtforms_json
-from flask import Blueprint, session, request, url_for, render_template, abort, Flask, Response
+from flask import Blueprint, session, request, url_for, render_template, abort, Flask, Response, json
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash
 from wtforms import Form, StringField, PasswordField, validators
 from models.user import User
-from resources.database import db_session
-from resources.email_confirmation import send_email
+from services.emailService import send_email
+import base64
+import wtforms_json
+import services.serviceSettings
 
 sign_bp = Blueprint('sign', __name__)
 
@@ -27,15 +27,14 @@ class RegistrationForm(Form):
 def enroll():
     form = RegistrationForm.from_json(request.json)
     if form.validate():
-        if User.query.filter(User.username == request.json['username']).count() != 0 or User.query.filter(User.email == request.json['email']).count() != 0:
+        if services.serviceSettings.u.usernameCount(request.json['username']) != 0 or services.serviceSettings.u.emailCount(request.json['email']) != 0:
             return abort(409)
 
         u = User(request.json['username'], request.json['email'], request.json['salted_password'],
                  request.json['profile_pic'], request.json.get('expiry', '9999-12-31 23:59:59'),
-                 request.json.get('token', ''), request.json.get('authorization', False),
-                 request.json.get('created_at', datetime.utcnow()))
-        db_session.add(u)
-        db_session.commit()
+                 token='', authorized=False, created_at=datetime.utcnow())
+
+        services.serviceSettings.u.addUser(u)
 
         subject = "Confirm your email"
 
@@ -63,13 +62,13 @@ def confirm_email(token):
     except:
         abort(408)
 
-    u = User.query.filter_by(email=email).first()
+    u = services.serviceSettings.u.findByEmail(email)
+
     if u == None:
         abort(400)
 
-    u.authorization = True
-    db_session.add(u)
-    db_session.commit()
+    services.serviceSettings.u.giveAuth(u)
+    services.serviceSettings.u.addUser(u)
 
     return Response(status='200', content_type='text/html')
 
@@ -77,16 +76,30 @@ def confirm_email(token):
 def load_user_from_header():
     header_auth = request.headers['Authorization'].replace('Basic ', '', 1)
     header_auth = base64.b64decode(header_auth).decode().split(':')
-    u = User.query.filter(User.username == header_auth[0]).first()
+    u = services.serviceSettings.u.findByUsername(header_auth[0])
+
     if u == None or check_password_hash(u.salted_password, header_auth[1]) == False:
         return abort(401)
 
+    session['uid'] = u.uid
     response = Response(status=200, content_type='application/json')
-    session['ID'] = 'PHOLASK SESSION'
-
+    data = json.dumps({"uid":u.uid, "username": u.username, "email": u.email})
+    response.set_data(data)
     return response
 
 @sign_bp.route("/out", methods=['POST'])
 def logout():
+    if 'uid' in session:
+        session.pop('uid', None)
+        return Response(status=204)
+    else:
+        return abort(401)
 
-    return Response(status=204)
+@sign_bp.route("/leave", methods=['POST'])
+def secede():
+    if 'uid' in session:
+        u = services.serviceSettings.u.findByUid(session['uid'])
+        services.serviceSettings.u.deleteUser(u)
+        return Response(status=204)
+    else:
+        abort(status=401)

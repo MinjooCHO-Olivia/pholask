@@ -14,5 +14,6 @@ def init_db():
     import models.album
     import models.album_tag
     import models.user
+    import models.notification
     import models.flask_session
     Base.metadata.create_all(bind=engine)

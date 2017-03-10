@@ -1,10 +1,13 @@
 from flask import Flask
-from resources.SqlalchemySessionManager import SQLAlchemySessionInterface
 from resources.database import db_session, init_db
 from routes.album import album_bp
 from routes.photo import photo_bp
 from routes.sign import sign_bp
 from routes.user import user_bp
+from models.user import User
+from models.photo import Photo
+from models.album import Album
+from models.album_tag import Album_tag
 
 
 app = Flask(__name__)

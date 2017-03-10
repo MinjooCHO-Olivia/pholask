@@ -8,7 +8,8 @@ class Photo_tag(Base):
     __tablename__ = 'photo_tag'
 
     p_tag_name = Column(String(20), primary_key=True)
-    photo_id = Column(Integer, ForeignKey('photo.id'), nullable=False)
+    photo_pid = Column(Integer, ForeignKey('photo.pid'))
+    photo = relationship("Photo", backref=backref('photo_tags'))
 
     def __init__(self, p_tag_name=None):
         self.p_tag_name = p_tag_name
